@@ -1,4 +1,3 @@
-//PARA COMPILAR: Buscar en el directorio del proyecto "esp32_TP5/src/main.c"
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -18,7 +17,7 @@ void app_main(void)
 {
     // Configuración UART (UART0 ya está conectado al USB en la mayoría de devkits)
     const uart_config_t uart_config = {
-        .baud_rate = 115200,
+        .baud_rate = 9600,
         .data_bits = UART_DATA_8_BITS,
         .parity    = UART_PARITY_DISABLE,
         .stop_bits = UART_STOP_BITS_1,
@@ -32,10 +31,10 @@ void app_main(void)
 
         // Simular señales
         count = count + 1;
-        if (count == 10)
+        if (count == 5)
         {
             signal0 = 10;
-        } else if (count == 20)
+        } else if (count == 10)
         {
             signal0 = 0;
             signal1 = 0;
