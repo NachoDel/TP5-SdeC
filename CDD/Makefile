@@ -1,4 +1,4 @@
-obj-m += esp32_cdd.o
+obj-m += signal_driver.o
 
 KDIR := /lib/modules/$(shell uname -r)/build
 PWD  := $(shell pwd)
@@ -8,4 +8,3 @@ all:
 
 clean:
 	make -C $(KDIR) M=$(PWD) clean
-
