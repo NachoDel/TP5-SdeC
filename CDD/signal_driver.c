@@ -69,7 +69,7 @@ static int reader_function(void *data)
                 }
             }
         }
-        msleep(50);
+        msleep(200);
     }
 
     filp_close(file, NULL);

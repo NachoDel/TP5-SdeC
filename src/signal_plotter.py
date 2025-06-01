@@ -37,11 +37,11 @@ def update(frame):
         print("Error leyendo la señal:", e)
         return line,
 
-    t = int(time.time() - start_time)
+    t = round(time.time() - start_time, 1)
     x_data.append(t)
     y_data.append(value)
 
-    if len(x_data) > 60:
+    if len(x_data) > 300:
         x_data = x_data[1:]
         y_data = y_data[1:]
 
@@ -65,7 +65,7 @@ def on_key(event):
         ax.legend()
         print(f"Cambiado a señal {signal_number}")
 
-ani = animation.FuncAnimation(fig, update, interval=1000)
+ani = animation.FuncAnimation(fig, update, interval=200)
 fig.canvas.mpl_connect("key_press_event", on_key)
 
 plt.show()
