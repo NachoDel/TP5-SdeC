@@ -9,76 +9,60 @@ Verificá que esté corriendo el programa que envía datos por UART con el forma
 🟢 2. Verificar que el ESP32 aparezca como dispositivo USB
 Listá los puertos USB:
 
-bash
-Copiar
-Editar
-ls /dev/ttyUSB*
+    ls /dev/ttyUSB*  
+  
 Deberías ver algo como:
 
-bash
-Copiar
-Editar
-/dev/ttyUSB0
-🟢 3. Compilar y cargar el módulo del kernel (CDD)
+    /dev/ttyUSB0  
+  
+🟢 3. Compilar y cargar el módulo del kernel (CDD)  
 a) Compilar:
-bash
-Copiar
-Editar
-make
+
+    make  
+  
 b) Cargar el módulo:
-bash
-Copiar
-Editar
-sudo insmod signal_driver.ko
+
+    sudo insmod signal_driver.ko  
+  
 c) Verificar en el log del kernel:
-bash
-Copiar
-Editar
-dmesg | tail
+
+    dmesg | tail  
+  
 Deberías ver:
 
-lua
-Copiar
-Editar
-signal_driver loaded: major <num>
-d) Crear el dispositivo en /dev/ (usando el número mayor que viste):
-bash
-Copiar
-Editar
-sudo mknod /dev/signal_driver c <major> 0
-sudo chmod 666 /dev/signal_driver
-Por ejemplo, si viste major 240:
+    signal_driver loaded: major <num>  
+  
+d) Crear el dispositivo en /dev/ (usando el número mayor que viste):  
 
-bash
-Copiar
-Editar
-sudo mknod /dev/signal_driver c 240 0
-🟢 4. Verificar lectura manual
+    sudo mknod /dev/signal_driver c <major> 0
+    sudo chmod 666 /dev/signal_driver  
+  
+Por ejemplo, si viste 'major 240':
+
+    sudo mknod /dev/signal_driver c 240 0  
+  
+🟢 4. Verificar lectura manual  
 Leé desde el driver con cat:
 
-bash
-Copiar
-Editar
-cat /dev/signal_driver
-Deberías ver un valor (ejemplo: 123), que cambia cada 1 segundo.
+    cat /dev/signal_driver  
+  
+Deberías ver un valor (ejemplo: 123), que cambia cada 0.2 segundos.
 
-🟢 5. Cambiar de señal (opcional)
-Escribí un 0 o 1 en el driver:
+🟢 5. Cambiar de señal (opcional)  
+Escribí un 0 o 1 en el driver:  
 
-bash
-Copiar
-Editar
-echo 1 > /dev/signal_driver
-cat /dev/signal_driver
-🟢 6. Ejecutar el graficador en Python
-bash
-Copiar
-Editar
-python3 signal_plotter.py
-Ingresá 0 o 1 al iniciar.
+    echo 1 > /dev/signal_driver
+    cat /dev/signal_driver  
+  
+🟢 6. Ejecutar el graficador en Python  
 
-Presioná tecla 0 o 1 mientras corre para cambiar de señal.
+    python3 signal_plotter.py  
 
-Verificá que el gráfico se actualice cada 1 segundo.
+  
+- Ingresá 0 o 1 al iniciar.
 
-Verificá que se resetee al cambiar de señal.
+- Presioná tecla 0 o 1 mientras corre para cambiar de señal.
+
+- Verificá que el gráfico se actualice cada 1 segundo.
+
+- Verificá que se resetee al cambiar de señal.
