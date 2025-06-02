@@ -20,7 +20,7 @@ int main() {
     }
 
     // Cambiar canal: 0 o 1
-    int canal = 0;
+    int canal = 1;
     if (ioctl(fd, ESP_IOCTL_SEL, canal) < 0) {
         perror("ioctl");
         return 1;

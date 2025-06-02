@@ -42,6 +42,7 @@ static void flush_line(const u8 *line, int len) {
         mutex_lock(&ring.lock);
         ring.buf[0][ring.head[0]] = (struct sample){ now, s0 };
         ring.buf[1][ring.head[1]] = (struct sample){ now, s1 };
+        pr_info("Guardado: canal0=%d canal1=%d ts=%llu\n", s0, s1, now);
         ring.head[0] = (ring.head[0] + 1) % BUF_SAMPLES;
         ring.head[1] = (ring.head[1] + 1) % BUF_SAMPLES;
         mutex_unlock(&ring.lock);
@@ -79,7 +80,6 @@ static struct tty_ldisc_ops esp_ldisc = {
     .close        = esp_close,
     .receive_buf  = esp_receive,
 };
-
 
 //
 // --- CHARACTER DEVICE CALLBACKS ---
@@ -123,7 +123,6 @@ static const struct file_operations secdd_fops = {
     .read           = secdd_read,
     .unlocked_ioctl = secdd_ioctl,
 };
-
 
 //
 // --- INIT / EXIT ---
