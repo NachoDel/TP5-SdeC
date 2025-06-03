@@ -5,150 +5,159 @@
 #include <linux/uaccess.h>
 #include <linux/kthread.h>
 #include <linux/delay.h>
-#include <linux/mutex.h>
 #include <linux/slab.h>
-#include <linux/time.h>
+#include <linux/device.h>
+#include <linux/mutex.h>
+#include <linux/init.h>
+#include <linux/version.h>
 
 #define DEVICE_NAME "signal_driver"
+#define CLASS_NAME "signal"
+#define BUFFER_SIZE 128
+#define READ_INTERVAL_MS 200
 
 static int major;
-static struct task_struct *reader_thread;
-static int selected_signal = 0;
-static int signal0 = 0;
-static int signal1 = 0;
-static struct mutex signal_lock;
+static struct class *signal_class = NULL;
+static struct device *signal_device = NULL;
 
-// Estructura del dispositivo
+static struct file *serial_filp = NULL;
+static struct task_struct *reader_thread = NULL;
+
+static char buffer[BUFFER_SIZE];
+static int buffer_index = 0;
+static DEFINE_MUTEX(buffer_mutex);
+
+// Prototipos
+static int device_open(struct inode *, struct file *);
+static int device_release(struct inode *, struct file *);
+static ssize_t device_read(struct file *, char __user *, size_t, loff_t *);
+
+static int reader_function(void *data);
+
+// Operaciones del dispositivo
 static struct file_operations fops = {
+    .owner = THIS_MODULE,
+    .open = device_open,
+    .release = device_release,
     .read = device_read,
-    .write = device_write,
 };
 
-// Hilo lector desde /dev/ttyUSB0
-static int reader_function(void *data)
-{
-    struct file *file;
-    char buf[128];
-    mm_segment_t oldfs;
-    int len;
-    char *comma;
-    int s0, s1;
-    struct timespec64 last_update, now;
+// Hilo de lectura desde /dev/ttyUSB0
+static int reader_function(void *data) {
+    loff_t pos = 0;
+    char ch;
+    int ret;
 
-    ktime_get_real_ts64(&last_update);
-
-    // Permitir acceso a espacio de usuario
-    oldfs = get_fs();
-    set_fs(KERNEL_DS);
-
-    // Abrir archivo
-    file = filp_open("/dev/ttyUSB0", O_RDONLY, 0);
-    if (IS_ERR(file)) {
-        printk(KERN_ERR "signal_driver: Error al abrir /dev/ttyUSB0\n");
-        set_fs(oldfs);
-        return -1;
+    serial_filp = filp_open("/dev/ttyUSB0", O_RDONLY, 0);
+    if (IS_ERR(serial_filp)) {
+        pr_err("No se pudo abrir /dev/ttyUSB0\n");
+        return PTR_ERR(serial_filp);
     }
 
     while (!kthread_should_stop()) {
-        memset(buf, 0, sizeof(buf));
-        len = kernel_read(file, buf, sizeof(buf) - 1, &file->f_pos);
-        if (len > 0) {
-            comma = strchr(buf, ',');
-            if (comma) {
-                *comma = '\0';
-                s0 = simple_strtol(buf, NULL, 10);
-                s1 = simple_strtol(comma + 1, NULL, 10);
-
-                ktime_get_real_ts64(&now);
-                if (now.tv_sec != last_update.tv_sec) {
-                    mutex_lock(&signal_lock);
-                    signal0 = s0;
-                    signal1 = s1;
-                    mutex_unlock(&signal_lock);
-                    last_update = now;
-                }
+        ret = kernel_read(serial_filp, &ch, 1, &pos);
+        if (ret > 0) {
+            mutex_lock(&buffer_mutex);
+            if (buffer_index < BUFFER_SIZE - 1) {
+                buffer[buffer_index++] = ch;
+                buffer[buffer_index] = '\0';
+            } else {
+                buffer_index = 0;
+                buffer[0] = ch;
+                buffer[1] = '\0';
             }
+            mutex_unlock(&buffer_mutex);
         }
-        msleep(200);
+
+        msleep(READ_INTERVAL_MS);
     }
 
-    filp_close(file, NULL);
-    set_fs(oldfs);
+    filp_close(serial_filp, NULL);
     return 0;
 }
 
-// Función de lectura
-static ssize_t device_read(struct file *filp, char __user *buffer, size_t len, loff_t *offset)
-{
-    char msg[32];
-    int value, ret;
-
-    mutex_lock(&signal_lock);
-    value = (selected_signal == 0) ? signal0 : signal1;
-    mutex_unlock(&signal_lock);
-
-    snprintf(msg, sizeof(msg), "%d\n", value);
-
-    ret = copy_to_user(buffer, msg, strlen(msg));
-    return ret ? -EFAULT : strlen(msg);
-}
-
-// Función de escritura
-static ssize_t device_write(struct file *filp, const char __user *buffer, size_t len, loff_t *offset)
-{
-    char kbuf[2];
-
-    if (len < 1)
-        return -EINVAL;
-
-    if (copy_from_user(kbuf, buffer, 1))
-        return -EFAULT;
-
-    kbuf[1] = '\0';
-
-    if (kbuf[0] == '0' || kbuf[0] == '1') {
-        selected_signal = kbuf[0] - '0';
-    }
-
-    return len;
-}
-
-// Inicialización
-static int __init signal_driver_init(void)
-{
+static int __init signal_init(void) {
     major = register_chrdev(0, DEVICE_NAME, &fops);
     if (major < 0) {
-        printk(KERN_ALERT "Registering char device failed with %d\n", major);
+        pr_alert("Fallo al registrar el dispositivo\n");
         return major;
     }
 
-    mutex_init(&signal_lock);
+    signal_class = class_create(CLASS_NAME);
+    if (IS_ERR(signal_class)) {
+        unregister_chrdev(major, DEVICE_NAME);
+        return PTR_ERR(signal_class);
+    }
+
+    signal_device = device_create(signal_class, NULL, MKDEV(major, 0), NULL, DEVICE_NAME);
+    if (IS_ERR(signal_device)) {
+        class_destroy(signal_class);
+        unregister_chrdev(major, DEVICE_NAME);
+        return PTR_ERR(signal_device);
+    }
+
+    mutex_init(&buffer_mutex);
 
     reader_thread = kthread_run(reader_function, NULL, "reader_thread");
     if (IS_ERR(reader_thread)) {
+        device_destroy(signal_class, MKDEV(major, 0));
+        class_destroy(signal_class);
         unregister_chrdev(major, DEVICE_NAME);
-        printk(KERN_ALERT "Failed to create reader thread\n");
         return PTR_ERR(reader_thread);
     }
 
-    printk(KERN_INFO "signal_driver loaded: major %d\n", major);
+    pr_info("Driver inicializado correctamente\n");
     return 0;
 }
 
-// Limpieza
-static void __exit signal_driver_exit(void)
-{
+static void __exit signal_exit(void) {
     if (reader_thread)
         kthread_stop(reader_thread);
 
+    device_destroy(signal_class, MKDEV(major, 0));
+    class_destroy(signal_class);
     unregister_chrdev(major, DEVICE_NAME);
-    printk(KERN_INFO "signal_driver unloaded\n");
+    pr_info("Driver descargado\n");
 }
 
-module_init(signal_driver_init);
-module_exit(signal_driver_exit);
+static int device_open(struct inode *inodep, struct file *filep) {
+    return 0;
+}
+
+static int device_release(struct inode *inodep, struct file *filep) {
+    return 0;
+}
+
+static ssize_t device_read(struct file *filep, char __user *user_buffer, size_t len, loff_t *offset) {
+    ssize_t bytes_read = 0;
+
+    mutex_lock(&buffer_mutex);
+    if (*offset >= buffer_index) {
+        mutex_unlock(&buffer_mutex);
+        return 0;
+    }
+
+    if (len > buffer_index - *offset)
+        len = buffer_index - *offset;
+
+    if (copy_to_user(user_buffer, buffer + *offset, len)) {
+        mutex_unlock(&buffer_mutex);
+        return -EFAULT;
+    }
+
+    *offset += len;
+    bytes_read = len;
+    mutex_unlock(&buffer_mutex);
+
+    return bytes_read;
+}
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("CodeGenesis");
-MODULE_DESCRIPTION("Driver de carácter para lectura de señales desde ESP32");
+MODULE_AUTHOR("TP Sistemas de Computación");
+MODULE_DESCRIPTION("CDD que lee señales desde ESP32 vía /dev/ttyUSB0");
+MODULE_VERSION("0.1");
+
+module_init(signal_init);
+module_exit(signal_exit);
+
 
