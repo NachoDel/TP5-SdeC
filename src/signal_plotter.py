@@ -1,71 +1,47 @@
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-import time
+import numpy as np
 
-DEVICE_PATH = "/dev/signal_driver"
+# Listas para almacenar datos
+y1_vals = []
+y2_vals = []
 
-def select_signal(signal_number):
-    with open(DEVICE_PATH, "w") as f:
-        f.write(str(signal_number))
+# Leer datos desde /dev/signal_driver
+with open("/dev/signal_driver", "r") as f:
+    for linea in f:
+        try:
+            y1, y2 = map(int, linea.strip().split(","))  # Cambiado a int en lugar de float
+            y1_vals.append(y1)
+            y2_vals.append(y2)
+        except ValueError:
+            pass  # Ignorar líneas mal formateadas
 
-def read_signal():
-    with open(DEVICE_PATH, "r") as f:
-        return int(f.read().strip())
+print("Total de muestras de Y1: ", len(y1_vals), " de Y2: ", len(y2_vals))
+print("Y1:", y1_vals)
+print("Y2:", y2_vals)
 
-# Configuración inicial
-signal_number = int(input("Elegí señal a graficar (0 o 1): "))
-select_signal(signal_number)
+# Encontrar el índice donde (y1, y2) == (0,1)
+try:
+    index_zero = next(i for i, (y1, y2) in enumerate(zip(y1_vals, y2_vals)) if y1 == 0 and y2 == 1)
+except StopIteration:
+    index_zero = 0  # Si no se encuentra, usar el primer valor
 
-x_data = []
-y_data = []
+# Construir eje X en segundos desde 0 hasta 2 s con pasos de 0.1 s
+x_vals = np.arange(0, len(y1_vals) * 0.1, 0.1)  # Suponiendo que cada muestra es cada 0.1s
+x_vals -= x_vals[index_zero]  # Ajustar el eje X para que 0 corresponda al índice encontrado
 
-fig, ax = plt.subplots()
-line, = ax.plot([], [], label=f"Señal {signal_number}")
-ax.set_xlabel("Tiempo (s)")
-ax.set_ylabel("Valor")
-ax.set_title(f"Graficando señal {signal_number}")
-ax.legend()
+# Graficar
+plt.figure(figsize=(8, 5))
+plt.plot(x_vals, y1_vals, marker="o", linestyle="-", label="Serie Y1", color="blue")
+plt.plot(x_vals, y2_vals, marker="s", linestyle="-", label="Serie Y2", color="red")
+plt.xlabel("Tiempo (s)")
+plt.ylabel("Valores (enteros)")
+plt.title("Gráfica ajustada de Y1 y Y2 con datos enteros")
+plt.legend()
+plt.grid()
 
-start_time = time.time()
-
-def update(frame):
-    global signal_number, start_time, x_data, y_data
-
-    try:
-        value = read_signal()
-    except Exception as e:
-        print("Error leyendo la señal:", e)
-        return line,
-
-    t = round(time.time() - start_time, 1)
-    x_data.append(t)
-    y_data.append(value)
-
-    if len(x_data) > 300:
-        x_data = x_data[1:]
-        y_data = y_data[1:]
-
-    line.set_data(x_data, y_data)
-    ax.relim()
-    ax.autoscale_view()
-
-    return line,
-
-def on_key(event):
-    global signal_number, x_data, y_data, start_time
-
-    if event.key == "0" or event.key == "1":
-        signal_number = int(event.key)
-        select_signal(signal_number)
-        x_data.clear()
-        y_data.clear()
-        start_time = time.time()
-        line.set_label(f"Señal {signal_number}")
-        ax.set_title(f"Graficando señal {signal_number}")
-        ax.legend()
-        print(f"Cambiado a señal {signal_number}")
-
-ani = animation.FuncAnimation(fig, update, interval=200)
-fig.canvas.mpl_connect("key_press_event", on_key)
+# Ajustar escala del eje X
+plt.xticks(np.arange(0, 2.1, 0.1))  # Marcas cada 0.1s de 0 a 2s
+plt.xlim(0, 2)  # Limitar el eje X a 2 segundos
 
 plt.show()
+

@@ -31,7 +31,6 @@ static DEFINE_MUTEX(buffer_mutex);
 static int device_open(struct inode *, struct file *);
 static int device_release(struct inode *, struct file *);
 static ssize_t device_read(struct file *, char __user *, size_t, loff_t *);
-
 static int reader_function(void *data);
 
 // Operaciones del dispositivo
@@ -111,8 +110,10 @@ static int __init signal_init(void) {
 }
 
 static void __exit signal_exit(void) {
-    if (reader_thread)
+    if (reader_thread) {
         kthread_stop(reader_thread);
+        reader_thread = NULL;  // Libera referencia
+    }
 
     device_destroy(signal_class, MKDEV(major, 0));
     class_destroy(signal_class);
@@ -159,5 +160,6 @@ MODULE_VERSION("0.1");
 
 module_init(signal_init);
 module_exit(signal_exit);
+
 
 
