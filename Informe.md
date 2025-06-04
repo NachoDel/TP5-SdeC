@@ -30,8 +30,8 @@ Uno de los puntos importantes es eel formato de los datos que se mandan esto deb
         Amplitud señal 1 , Amplitud señal 2 = Y1,Y2/n
   
 O sea se manda las amplitudes de las 2 señales, separadas por una coma y por linea, esto nos permite saber que va a recibir el driver, ¿porque es importante esto? nuestro driver debe saber que debe el formato de datos que recibe, independientemente de la señal que se mande.  
-En la carpeta "src" se encuentra el proyecto del programa del ESP que fue programado en C con el framework ESP-IDF usando PlatformIO. El codigo principal se encuentra en el archivo llamado main.c.  
-En este codigo lo que se hace es configurar el UART0 que es el conectado al USB C, se forman las 2 señales y se se mandan por UART, como van a ver es muy simple.  
+En la carpeta "Platformio/esp32_TP5" se encuentra el proyecto del programa del ESP que fue programado en C con el framework ESP-IDF usando PlatformIO. El codigo principal se encuentra en el archivo llamado main.c dentro de la carpeta src dentro del proyecto ya mencionado.  
+En este codigo lo que se hace es configurar el UART0 que es el conectado al USB C, se forman las 2 señales y se se mandan por UART, como pueden ver, es muy simple.  
   
 ### **Driver de caracter(CDD)**
 
