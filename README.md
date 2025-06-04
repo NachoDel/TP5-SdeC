@@ -1,5 +1,5 @@
 # **SISTEMAS DE COMPUTACION**
-# **TRABAJO PRACTICO N° 4: MÓDULOS DE KERNEL Y LLAMADAS A SISTEMA**
+# **TRABAJO PRACTICO N° 5: DRIVER DE CARACTER**
 
 ## INTEGRANTES:
 - Delamer, Ignacio
@@ -10,78 +10,70 @@
 CODE GENESIS
 
 ## INDICE:  
-Carpeta 'Comparacion_modulos' --> archivos .txt del punto 2 donde se comparan los modulos cargados en las PCs.  
-Carpeta 'imgenes' --> Imagenes presentes en el informe.  
-Carpeta 'HWinfo' --> archivo de la ejecucion de HwInfo en archivo .txt.   
-Carpeta 'Helloworld' --> codigos del programa helloworld.  
+Carpeta 'CDD' --> Codigo del driver y mekefile para se compilacion.  
+Carpeta 'img' --> Imagenes presentes en el informe.  
+Carpeta 'Platformio' --> Proyecto del ESP32.   
+Carpeta 'src' --> Codigos del programa a nivel de uduario que grafica las señales.   
+Markdowm 'README' --> Instructivo para la ejecucion.  
 Markdown 'Informe.md' --> Informe completo de todo el trabajo.  
 
 
-✅ Testeo completo del proyecto de driver y visualización
-
-🟢 1. Preparar el ESP32
-
-Asegurate de que el ESP32 esté conectado por USB a tu PC.
-
-Verificá que esté corriendo el programa que envía datos por UART con el formato 123,456\n cada 0.1 segundos.
-
-🟢 2. Verificar que el ESP32 aparezca como dispositivo USB
-Listá los puertos USB:
-
-    ls /dev/ttyUSB*  
+## INSTRUCTIVO DE USUARIO: 
   
-Deberías ver algo como:
+Testeo completo del proyecto de driver y visualización
 
-    /dev/ttyUSB0  
+1. Preparar el ESP32
   
-🟢 3. Compilar y cargar el módulo del kernel (CDD)  
-a) Compilar:
-
-    make  
+    Asegurate de que el ESP32 esté conectado por USB a tu PC.  
+    Verificá que esté corriendo el programa que envía datos por UART con el formato 123,456\n cada 0.1 segundos.  
   
-b) Cargar el módulo:
-
-    sudo insmod signal_driver.ko  
+2. Verificar que el ESP32 aparezca como dispositivo USB
+    Listá los puertos USB:
   
-c) Verificar en el log del kernel:
-
-    dmesg | tail  
+        ls /dev/ttyUSB*  
   
-Deberías ver:
-
-    signal_driver loaded: major <num>  
+    Deberías ver algo como:
   
-d) Crear el dispositivo en /dev/ (usando el número mayor que viste):  
-
-    sudo mknod /dev/signal_driver c <major> 0
-    sudo chmod 666 /dev/signal_driver  
+        /dev/ttyUSB0  
   
-Por ejemplo, si viste 'major 240':
+3. Compilar y cargar el módulo del kernel (CDD)
+     
+    a) Compilar:
 
-    sudo mknod /dev/signal_driver c 240 0  
+        make  
   
-🟢 4. Verificar lectura manual  
-Leé desde el driver con cat:
+    b) Cargar el módulo:
 
-    cat /dev/signal_driver  
+        sudo insmod signal_driver.ko  
   
-Deberías ver un valor (ejemplo: 123), que cambia cada 0.2 segundos.
+    c) Verificar la carga del modulo:
 
-🟢 5. Cambiar de señal (opcional)  
-Escribí un 0 o 1 en el driver:  
-
-    echo 1 > /dev/signal_driver
-    cat /dev/signal_driver  
+       lsmod | grep signal_driver 
   
-🟢 6. Ejecutar el graficador en Python  
-
-    python3 signal_plotter.py  
-
+    d) Crear el dispositivo en /dev/ y cambia los permisos de lectura:  
+       Comprobar major number:
+   
+           cat /proc/devices | grep signal_driver
+           sudo mknod /dev/signal_driver c <major> 0
   
-- Ingresá 0 o 1 al iniciar.
+       Por ejemplo, si viste 'major 240':
 
-- Presioná tecla 0 o 1 mientras corre para cambiar de señal.
+           sudo mknod /dev/signal_driver c 240 0  
+  
 
-- Verificá que el gráfico se actualice cada 1 segundo.
+      Cambio de permisos:
 
-- Verificá que se resetee al cambiar de señal.
+           sudo chmod 666 /dev/signal_driver 
+  
+4. Verificar lectura manual
+     
+    Leé desde el driver con cat:
+
+        cat /dev/signal_driver  
+  
+    Deberías ver un valor una lista con valores tipo: y1,y2.  
+  
+5. Ejecutar el graficador en Python  
+
+        python3 signal_plotter.py  
+
