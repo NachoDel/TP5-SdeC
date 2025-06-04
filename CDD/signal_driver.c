@@ -13,8 +13,8 @@
 
 #define DEVICE_NAME "signal_driver"
 #define CLASS_NAME "signal"
-#define BUFFER_SIZE 128
-#define READ_INTERVAL_MS 200
+#define BUFFER_SIZE 256
+#define READ_INTERVAL_MS 100
 
 static int major;
 static struct class *signal_class = NULL;
@@ -154,12 +154,13 @@ static ssize_t device_read(struct file *filep, char __user *user_buffer, size_t 
 }
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("TP Sistemas de Computación");
-MODULE_DESCRIPTION("CDD que lee señales desde ESP32 vía /dev/ttyUSB0");
-MODULE_VERSION("0.1");
+MODULE_AUTHOR("Code_Genesis");
+MODULE_DESCRIPTION("CDD que lee desde /dev/ttyUSB0");
+MODULE_VERSION("0.2");
 
 module_init(signal_init);
 module_exit(signal_exit);
+
 
 
 
