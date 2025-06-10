@@ -1,3 +1,4 @@
+
 # Universidad Nacional de Córdoba
 
 
@@ -35,15 +36,41 @@ En este codigo lo que se hace es configurar el UART0 que es el conectado al USB 
   
 ### **Driver de caracter(CDD)**
 
+El Driver de caracter se reliza las siguientes tareas:
 
+- Abrir el puerto serie (`/dev/ttyUSB0`) y lee los datos enviados por el ESP32.
+ - Almacenar los datos leídos en un buffer protegido por mutex.
+ - Exponer la información leída a través de un dispositivo de caracter en `/dev/signal_driver`.
+
+Tambien realiza una **Lectura en espacio de usuario:** Al leer `/dev/signal_driver`, se obtiene una lista con líneas del tipo `Y1,Y2`.
+
+**Fragmento relevante del Driver:**
+```c
+serial_filp = filp_open("/dev/ttyUSB0", O_RDONLY, 0);
+ret = kernel_read(serial_filp, &ch, 1, &pos);
+// Se llena el buffer con los caracteres recibidos
+```
 
 ### **Programa nivel de usuario**
 
+El programa a nivel de usuario se encarga de
 
+- Leer datos del driver (`/dev/signal_driver`), separando las listas de valores de Y1 y Y2.
+- Permitir al usuario seleccionar cuál de las dos señales graficar (Y1 o Y2).
+- Al cambiar de señal, el gráfico se resetea y se ajusta a la nueva medición.
+- El eje X representa el tiempo (segundos), el eje Y la amplitud; el gráfico indica el tipo de señal sensada.
+    
+Como la consigna lo solicitaba, el programa a nivel de usuario permite la **selección de señal** permitiendo al usuario elegir por teclado cuál visualizar y el gráfico se actualiza en consecuencia.
+
+**Fragmento relevante del programa a nivel de usuario:**
+```python
+while True:
+    opcion = input("¿Qué señal deseas graficar? (1 para Y1, 2 para Y2, 'q' para salir): ")
+    graficar(opcion, x_vals, y1_vals, y2_vals)
+```
 
 ## **Conclusiones**
-  
-  
+En conclusion, la arquitectura planteada y el código implementado cumplen integralmente la consigna: permiten sensar dos señales externas (simuladas por un ESP32), exponerlas mediante un driver de caracter y visualizarlas en una aplicación de usuario que permite seleccionar cuál graficar, reiniciando la visualización al cambiar de señal.
   
   
 
