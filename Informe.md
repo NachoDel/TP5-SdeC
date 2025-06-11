@@ -112,7 +112,11 @@ Para verificar el funcionamiento se hizo una prueba completa de lectura, selecci
 
 A continuación se insertarán imágenes ilustrando los gráficos de ambas señales:
 
+ ![EJECUCION](Img/Ejecuccion_py.png)
 
+ ![SEÑAL-1](Img/Señal_1.png)
+
+ ![SEÑAL-2](Img/Señal_2.png)
 
 ## **Conclusiones**
 En conclusion, la arquitectura planteada y el código implementado cumplen integralmente la consigna: permiten sensar dos señales externas (simuladas por un ESP32), exponerlas mediante un driver de caracter y visualizarlas en una aplicación de usuario que permite seleccionar cuál graficar, reiniciando la visualización al cambiar de señal.
