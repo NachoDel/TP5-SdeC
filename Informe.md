@@ -36,7 +36,7 @@ En este codigo lo que se hace es configurar el UART0 que es el conectado al USB 
   
 ### **Driver de caracter(CDD)**
 
-El Driver de caracter se reliza las siguientes tareas:
+El driver de carácter desarrollado cumple una función central en la arquitectura del sistema: actúa como intermediario entre el dispositivo que genera las señales (ESP32 vía UART) y la aplicación en espacio de usuario. A continuación se explican las funciones más relevantes y su lógica de operación:
 
 - Abrir el puerto serie (`/dev/ttyUSB0`) y lee los datos enviados por el ESP32.
  - Almacenar los datos leídos en un buffer protegido por mutex.
@@ -44,12 +44,41 @@ El Driver de caracter se reliza las siguientes tareas:
 
 Tambien realiza una **Lectura en espacio de usuario:** Al leer `/dev/signal_driver`, se obtiene una lista con líneas del tipo `Y1,Y2`.
 
-**Fragmento relevante del Driver:**
-```c
-serial_filp = filp_open("/dev/ttyUSB0", O_RDONLY, 0);
+**Fragmento relevante del Driver "FUNCIONES PRINCIPALES":**
+
+**reader_function**
+
+Esta función se ejecuta en un hilo del kernel creado específicamente para realizar la lectura continua del puerto serie (/dev/ttyUSB0).
+
 ret = kernel_read(serial_filp, &ch, 1, &pos);
-// Se llena el buffer con los caracteres recibidos
-```
+Lee carácter por carácter la información enviada por el ESP32, con una pausa controlada por msleep(READ_INTERVAL_MS). Los datos leídos (formato Y1,Y2\n) se almacenan en un buffer circular protegido con mutex para evitar condiciones de carrera.
+
+**device_read**
+Es la función que implementa la lectura del dispositivo desde espacio de usuario:
+
+copy_to_user(user_buffer, buffer + *offset, len);
+
+Transfiere al usuario los datos almacenados en el buffer. Se controla el puntero de offset para evitar lecturas fuera del rango actual del buffer.
+
+
+**signal_init y signal_exit**
+
+Se encargan de la inicialización y liberación del módulo siguiendo los siguiente pasos:
+
+  Se registra un dispositivo de carácter dinámico.
+
+  Se crea una clase y un dispositivo visible en /dev/signal_driver.
+
+  Se lanza el hilo reader_thread para comenzar a leer el puerto serie.
+
+**SINCRONIZACION** 
+
+  Se utiliza como:
+  
+  DEFINE_MUTEX(buffer_mutex);
+
+Este mutex garantiza que el buffer compartido por el hilo lector y las llamadas read del usuario no se corrompa al ser accedido simultáneamente.
+
 
 ### **Programa nivel de usuario**
 
@@ -68,6 +97,22 @@ while True:
     opcion = input("¿Qué señal deseas graficar? (1 para Y1, 2 para Y2, 'q' para salir): ")
     graficar(opcion, x_vals, y1_vals, y2_vals)
 ```
+**PRUEBAS REALIZADAS**
+
+
+Para verificar el funcionamiento se hizo una prueba completa de lectura, selección y graficado. En la prueba se realizaron las siguientes acciones:
+
+  1)Inicialización del ESP32, enviando dos señales distintas: una pulsante (amplitud fija de 10) y una diente de sierra (1 a 10).
+
+  2)Carga del módulo CDD, creando el dispositivo /dev/signal_driver.
+
+  3)Ejecución del programa de usuario, con lectura y graficado de señales.
+
+  4)Cambio de señal durante la ejecución, verificando que el gráfico se reinicia correctamente y representa la señal deseada.
+
+A continuación se insertarán imágenes ilustrando los gráficos de ambas señales:
+
+
 
 ## **Conclusiones**
 En conclusion, la arquitectura planteada y el código implementado cumplen integralmente la consigna: permiten sensar dos señales externas (simuladas por un ESP32), exponerlas mediante un driver de caracter y visualizarlas en una aplicación de usuario que permite seleccionar cuál graficar, reiniciando la visualización al cambiar de señal.
